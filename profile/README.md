@@ -91,4 +91,4 @@ Operational flow (CI/CD)
 * Current enforced rule(s) 
 
 
-![Project Diagram](./diagram.png)
+![Project Diagram](full-blueprint-oct-16.png)
