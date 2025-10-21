@@ -1,21 +1,33 @@
-### Integration with `infra-gcp-platform`
+### Purpose Split
 
-This repository (`opa-policies-core`) provides OPA/Rego policies that are consumed by your Terraform repository `infra-gcp-platform` during CI/CD to gate changes.
+* `opa-policies-core` hosts OPA/Rego polices and tests (eg. enforcing required lables on cloud provider storage.
+* `infra-gcp-platform` Owns Terraform code, planning, and CI/CD that applies infrastructure; it consumes the policies as a policy gate.
 
-- `infra-gcp-platform` produces a Terraform plan and renders it to JSON (`terraform show -json`).
+## Integration Point
+
+- `infra-gcp-platform` produces a Terraform plan and converts it to JSON (`terraform show -json`).
 - CI runs policy evaluation using Conftest or OPA against `opa-policies-core/policies`.
+- Policies read `input.resource_changes` 
 - If any `google_storage_bucket` is missing required labels (`environment`, `owner`), the build fails with clear messages.
 
-Typical CI flow:
+Typical Lifecycle: 
 
-```bash
-terraform init
-terraform plan -out tfplan.binary
-terraform show -json tfplan.binary > tfplan.json
-conftest test --input terraform --policy ../opa-policies-core/policies tfplan.json
-# or
-opa eval -I -d ../opa-policies-core/policies -i tfplan.json "data.gcp.labels.deny"
-```
+- Policy authors evolve rules in `opa-polices-core` with opa test.
+- Infra authors change Terraform
+- CI in infra repo fetches/points to the policy bundle and gate merges/deploys.
+
+Operational flow (CI/CD)
+
+1. Developer pushes Terraform changes to `infra-gcp-platform
+2. CI runs: terraform init, terraform plan, terraform show
+3. CI runs policy check: conftest or opa eval
+4. If violations exist, CI fails with actionable messages; otherwise proceeds to apply.
+
+## Data/contract between repos
+* Input document: Terraform plan JSON containing `resource_changes` entries.
+* Policy package: gcp.labels
+* Entry points: data.gcp.labels.allow (boolean), data.gcp.labels.deny (collection of violation messages)
+* Current enforced rule(s) 
 
 #### Flow diagram
 
